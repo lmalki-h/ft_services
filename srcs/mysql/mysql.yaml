@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysqlpvc
+  labels:
+    app: mysqlpvc
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  labels:
+    app: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        imagePullPolicy: Never
+        image: mysql
+        ports:
+        - containerPort: 3306
+        env:
+        - name: SQLUSER
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: sqluser
+        - name: SQLPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: sqlpassword
+        - name: WORDPRESSIP
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: clusterip
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - liveness_probe.sh
+          initialDelaySeconds: 6
+          periodSeconds: 2
+        volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: mysqlpvc
+      volumes:
+       - name: mysqlpvc
+         persistentVolumeClaim:
+           claimName: mysqlpvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  type: ClusterIP
+  ports:
+  - name: mysql-3306
+    port: 3306
+    targetPort: 3306
+    protocol: TCP
+  selector:
+    app: mysql

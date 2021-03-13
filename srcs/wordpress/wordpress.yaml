@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-deployment
+  labels:
+    app: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - name: wordpress
+        imagePullPolicy: Never
+        image: wordpress
+        livenessProbe:
+          exec:
+            command:
+             - sh
+             - /liveness_probe.sh
+          initialDelaySeconds: 6
+          periodSeconds: 3
+        env:
+        - name: SQLUSER
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: sqluser
+        - name: SQLPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: sqlpassword
+        - name: MYSQL_IP
+          value: mysql.default.svc.cluster.local
+        ports:
+        - containerPort: 5050
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  annotations:
+    metallb.universe.tf/allow-shared-ip: lmkh
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.17.0.2
+  ports:
+  - name: wordpress
+    port: 5050
+    targetPort: 5050
+    protocol: TCP
+  selector:
+    app: wordpress

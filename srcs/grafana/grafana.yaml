@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-deployment
+  labels:
+    app: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana
+        imagePullPolicy: Never
+        env:
+        - name: INFLUXDBUSER
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: influxdbuser
+        - name: INFLUXDBPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: influxdbpassword
+        - name: INFLUXDB_IP
+          value: influxdb.default.svc.cluster.local
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  annotations:
+    metallb.universe.tf/allow-shared-ip: lmkh
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.17.0.2
+  selector:
+    app: grafana
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegraf-deployment
+  labels:
+    app: telegraf
+spec:
+  selector:
+    matchLabels:
+      app: telegraf
+  template:
+    metadata:
+      labels:
+        app: telegraf
+    spec:
+      containers:
+      - name: telegraf
+        image: telegraf
+        imagePullPolicy: Never
+        env:
+        - name: INFLUXDBUSER
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: influxdbuser
+        - name: INFLUXDBPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysecrets
+              key: influxdbpassword
+        livenessProbe:
+          exec:
+            command:
+              - sh
+              - /liveness_probe.sh
+          initialDelaySeconds: 6
+          periodSeconds: 2
+        ports:
+        - containerPort: 6666
+        volumeMounts:
+        - name: chaussette-docker
+          mountPath: "/var/run/docker.sock"
+      volumes:
+      - name: chaussette-docker
+        hostPath:
+          path: /var/run/docker.sock
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telegraf
+spec:
+  type: ClusterIP
+  ports:
+  - name: telegraf
+    port: 6666
+    targetPort: 6666
+    protocol: TCP
+  selector:
+    app: telegraf
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: telegraf-account
+  labels:
+    app: telegraf
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: telegraf-role
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: telegraf-account
+  namespace: default

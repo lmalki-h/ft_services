@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phpmyadmin-deployment
+  labels:
+    app: phpmyadmin
+spec:
+  selector:
+    matchLabels:
+      app: phpmyadmin
+  template:
+    metadata:
+      labels:
+        app: phpmyadmin
+    spec:
+      containers:
+      - name: phpmyadmin
+        imagePullPolicy: Never
+        image: phpmyadmin
+        livenessProbe:
+          exec:
+           command:
+           - sh
+           - liveness_probe.sh
+          initialDelaySeconds: 6
+          periodSeconds: 3
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MYSQL_IP
+          value: mysql.default.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phpmyadmin
+  annotations:
+    metallb.universe.tf/allow-shared-ip: lmkh
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 172.17.0.2
+  ports:
+  - name: phpmyadmin-5000
+    port: 5000
+    targetPort: 5000
+    protocol: TCP
+  selector:
+    app: phpmyadmin

@@ -1,0 +1,9 @@
+apiVersion: 1
+
+providers:
+  - name: 'dashboards'  # A uniquely identifiable name for the provider
+    folder: '' # The folder where to place the dashboards
+    type: file
+    editable: true
+    options:
+      path: '/dashboards/'
